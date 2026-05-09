@@ -1,0 +1,236 @@
+:root {
+  --bg: #0f1115;
+  --panel: #181b22;
+  --panel-soft: #1f232c;
+  --border: #2a2f3a;
+  --text: #e6e9ef;
+  --text-dim: #9aa3b2;
+  --accent: #6ea8ff;
+  --error: #ff6b6b;
+  --warning: #ffb86b;
+  --ok: #5cd3a3;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.app-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.app-header h1 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.app-header .subtitle {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.panel h2 {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  margin: 0 0 14px;
+}
+
+.dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.dropzone:hover,
+.dropzone.dragging {
+  border-color: var(--accent);
+  background: var(--panel-soft);
+}
+.dropzone p {
+  margin: 8px 0 0;
+  color: var(--text-dim);
+}
+.dropzone input[type='file'] {
+  display: none;
+}
+
+.controls {
+  display: flex;
+  gap: 16px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+input[type='date'],
+select,
+button {
+  background: var(--panel-soft);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+  font-weight: 600;
+  background: var(--accent);
+  color: #0d1117;
+  border-color: transparent;
+  transition: filter 0.15s;
+}
+button:hover {
+  filter: brightness(1.1);
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+.stat {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.stat .label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+.stat .value {
+  font-size: 24px;
+  font-weight: 600;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.violations-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.violations-table th,
+.violations-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.violations-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.violations-table tr:last-child td {
+  border-bottom: none;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.badge.error {
+  background: rgba(255, 107, 107, 0.18);
+  color: var(--error);
+}
+.badge.warning {
+  background: rgba(255, 184, 107, 0.18);
+  color: var(--warning);
+}
+.badge.ok {
+  background: rgba(92, 211, 163, 0.18);
+  color: var(--ok);
+}
+
+.muted {
+  color: var(--text-dim);
+}
+
+.error-banner {
+  background: rgba(255, 107, 107, 0.15);
+  color: var(--error);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-dim);
+}

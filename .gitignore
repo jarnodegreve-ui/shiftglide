@@ -1,7 +1,16 @@
 node_modules
 dist
+dist-web
 coverage
 .DS_Store
 *.log
 .env
 .env.local
+.vite
+
+# Echte planningsdata — nooit committen
+*.xls
+*.xlsx
+*.xlsm
+data/
+samples/private/
