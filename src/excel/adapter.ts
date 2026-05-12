@@ -11,8 +11,23 @@ export interface AdapterOptions {
   region: Region;
 }
 
+export type EntryKind = 'shift' | 'absence' | 'ignored' | 'unknown';
+
+export interface EnrichedEntry {
+  date: Date;
+  driverName: string;
+  rawCode: string;
+  kind: EntryKind;
+  /** Alleen gevuld als kind === 'shift' */
+  shifts: Shift[];
+}
+
 export interface AdapterResult {
   planning: Planning;
+  /** Eén entry per niet-lege cel in praktijk, met categorisatie. Bron voor de week-grid. */
+  entries: EnrichedEntry[];
+  /** Alle chauffeurs die in de header-rij van praktijk voorkomen, in originele volgorde */
+  drivers: string[];
   warnings: string[];
   /** Codes die wel in praktijk staan maar niet in loondiensten — voor diagnose */
   unknownCodes: Map<string, number>;
@@ -94,17 +109,32 @@ export function buildPlanning(workbook: WorkBook, options: AdapterOptions): Adap
   const ignoredWorkCodes = new Map<string, number>();
 
   const shifts: Shift[] = [];
+  const enrichedEntries: EnrichedEntry[] = [];
 
   for (const entry of pkResult.entries) {
     const def = lookupLoondienst(ldResult.defs, entry.rawCode);
 
     if (!def) {
       inc(unknownCodes, entry.rawCode);
+      enrichedEntries.push({
+        date: entry.date,
+        driverName: entry.driverName,
+        rawCode: entry.rawCode,
+        kind: 'unknown',
+        shifts: [],
+      });
       continue;
     }
 
     if (def.isAbsence) {
       inc(absenceCodes, entry.rawCode);
+      enrichedEntries.push({
+        date: entry.date,
+        driverName: entry.driverName,
+        rawCode: entry.rawCode,
+        kind: 'absence',
+        shifts: [],
+      });
       continue;
     }
 
@@ -112,10 +142,25 @@ export function buildPlanning(workbook: WorkBook, options: AdapterOptions): Adap
     if (transportType === null) {
       // Letter-werk-codes (BUR, GAR, OPL, kv, verk, ...): genegeerd voor planning-check
       inc(ignoredWorkCodes, entry.rawCode);
+      enrichedEntries.push({
+        date: entry.date,
+        driverName: entry.driverName,
+        rawCode: entry.rawCode,
+        kind: 'ignored',
+        shifts: [],
+      });
       continue;
     }
 
-    shifts.push(...buildShiftsForEntry(entry, def, transportType));
+    const entryShifts = buildShiftsForEntry(entry, def, transportType);
+    shifts.push(...entryShifts);
+    enrichedEntries.push({
+      date: entry.date,
+      driverName: entry.driverName,
+      rawCode: entry.rawCode,
+      kind: 'shift',
+      shifts: entryShifts,
+    });
   }
 
   const planning: Planning = {
@@ -126,6 +171,8 @@ export function buildPlanning(workbook: WorkBook, options: AdapterOptions): Adap
 
   return {
     planning,
+    entries: enrichedEntries,
+    drivers: pkResult.driverNames,
     warnings,
     unknownCodes,
     absenceCodes,
