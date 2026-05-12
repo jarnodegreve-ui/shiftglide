@@ -4,6 +4,9 @@ import type { WorkBook } from 'xlsx';
 import { type AdapterResult, type EnrichedEntry, buildPlanning } from '../../src/excel/adapter.js';
 import { runKbChecks } from '../../src/rules/kb-2005-08-10.js';
 import type { Region, Violation } from '../../src/types/index.js';
+import { GenerateView } from './GenerateView.js';
+
+type TabKey = 'check' | 'generate';
 
 type LoadedFile = {
   name: string;
@@ -26,6 +29,7 @@ export function App(): React.ReactElement {
   const [region, setRegion] = useState<Region>('flanders');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<TabKey>('check');
 
   const handleFile = useCallback(async (f: File) => {
     setBusy(true);
@@ -103,7 +107,38 @@ export function App(): React.ReactElement {
         </div>
       </section>
 
-      {result && <ResultsPanel adapter={result.adapter} violations={result.violations} />}
+      <nav className="tab-nav">
+        <button
+          className={`tab-btn ${tab === 'check' ? 'active' : ''}`}
+          onClick={() => setTab('check')}
+        >
+          Controleer planning
+        </button>
+        <button
+          className={`tab-btn ${tab === 'generate' ? 'active' : ''}`}
+          onClick={() => setTab('generate')}
+        >
+          Genereer planning
+        </button>
+      </nav>
+
+      {tab === 'check' && result && (
+        <ResultsPanel adapter={result.adapter} violations={result.violations} />
+      )}
+      {tab === 'check' && !result && (
+        <section className="panel">
+          <div className="empty-state">
+            <p>Upload een <code>.xls</code>-bestand en kies een week om de compliance-check te starten.</p>
+          </div>
+        </section>
+      )}
+      {tab === 'generate' && (
+        <GenerateView
+          workbook={file?.workbook ?? null}
+          weekStart={new Date(`${weekStart}T00:00:00Z`)}
+          region={region}
+        />
+      )}
     </div>
   );
 }

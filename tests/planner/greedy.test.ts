@@ -44,7 +44,7 @@ const TUESDAY = new Date(Date.UTC(2026, 4, 5));
 const WEDNESDAY = new Date(Date.UTC(2026, 4, 6));
 
 function dayPlan(date: Date, codes: string[]): DayPlan {
-  return { date, dayType: 'schooldag', requiredDiensten: codes };
+  return { date, dayType: 'maandag', requiredDiensten: codes };
 }
 
 function input(drivers: string[], dayPlans: DayPlan[]): PlannerInput {

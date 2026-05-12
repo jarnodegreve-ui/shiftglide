@@ -1,6 +1,23 @@
 import type { Region } from '../types/index.js';
 
-export type DayType = 'schooldag' | 'vakantiedag' | 'zaterdag' | 'zondag' | 'feestdag';
+export type DayType =
+  | 'maandag'
+  | 'dinsdag'
+  | 'woensdag'
+  | 'donderdag'
+  | 'vrijdag'
+  | 'zaterdag'
+  | 'zondag';
+
+export const ALL_DAY_TYPES: readonly DayType[] = [
+  'maandag',
+  'dinsdag',
+  'woensdag',
+  'donderdag',
+  'vrijdag',
+  'zaterdag',
+  'zondag',
+] as const;
 
 export interface DayPlan {
   /** UTC-datum, alleen YYYY-MM-DD 00:00:00Z gedeelte gebruikt */
