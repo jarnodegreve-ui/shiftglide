@@ -25,5 +25,8 @@
     "vite": "^8.0.11",
     "vitest": "^2.1.5",
     "xlsx": "^0.18.5"
+  },
+  "dependencies": {
+    "zustand": "^5.0.13"
   }
 }

@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import type { WorkBook } from 'xlsx';
 import { type LoondienstDef, parseLoondiensten } from '../../src/excel/loondiensten.js';
 import { buildPlanningFromAssignments } from '../../src/planner/build-planning.js';
 import { exportToWorkbook } from '../../src/planner/export.js';
@@ -15,6 +14,7 @@ import {
 import { runKbChecks } from '../../src/rules/kb-2005-08-10.js';
 import type { Region, Violation } from '../../src/types/index.js';
 import { downloadWorkbook } from './download.js';
+import { useAppStore } from './store.js';
 
 interface DayInput {
   date: Date;
@@ -55,14 +55,16 @@ function formatMinutes(min: number): string {
   return `${h}u${String(m).padStart(2, '0')}`;
 }
 
-export function GenerateView(props: {
-  workbook: WorkBook | null;
-  weekStart: Date;
-  region: Region;
-}): React.ReactElement {
-  const { workbook, weekStart, region } = props;
+export function GenerateView(): React.ReactElement {
+  const workbook = useAppStore((s) => s.workbook);
+  const weekStartIso = useAppStore((s) => s.lastWeekStart);
+  const region = useAppStore((s) => s.region);
+  const storeDrivers = useAppStore((s) => s.drivers);
+  const setStoreDrivers = useAppStore((s) => s.setDrivers);
 
-  const [drivers, setDrivers] = useState<string>('');
+  const weekStart = useMemo(() => new Date(`${weekStartIso}T00:00:00Z`), [weekStartIso]);
+
+  const [driversText, setDriversText] = useState<string>(storeDrivers.join('\n'));
   const [days, setDays] = useState<DayInput[]>(() => buildInitialDays(weekStart));
   const [output, setOutput] = useState<{ result: PlannerOutput; drivers: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +98,7 @@ export function GenerateView(props: {
       setError('Geen catalogus geladen — upload eerst je .xls bovenaan.');
       return;
     }
-    const driverList = drivers
+    const driverList = driversText
       .split('\n')
       .map((s) => s.trim())
       .filter(Boolean);
@@ -105,6 +107,9 @@ export function GenerateView(props: {
       setError('Geef minstens één chauffeur op.');
       return;
     }
+
+    // Persist in store voor hergebruik tussen sessies
+    setStoreDrivers(driverList);
 
     const dayPlans: DayPlan[] = days.map((d) => ({
       date: d.date,
@@ -137,12 +142,13 @@ export function GenerateView(props: {
         <textarea
           className="textarea-drivers"
           placeholder="Eén chauffeur per regel, bv:&#10;De Roo Dieter&#10;Mendez Jesus&#10;..."
-          value={drivers}
-          onChange={(e) => setDrivers(e.target.value)}
+          value={driversText}
+          onChange={(e) => setDriversText(e.target.value)}
           rows={8}
         />
         <p className="muted small">
-          {drivers.split('\n').filter((s) => s.trim()).length} chauffeur(s)
+          {driversText.split('\n').filter((s) => s.trim()).length} chauffeur(s) — wordt
+          opgeslagen bij genereren
         </p>
       </section>
 
