@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { WorkBook } from 'xlsx';
-import { parseLoondiensten } from '../../src/excel/loondiensten.js';
+import { type LoondienstDef, parseLoondiensten } from '../../src/excel/loondiensten.js';
+import { buildPlanningFromAssignments } from '../../src/planner/build-planning.js';
+import { exportToWorkbook } from '../../src/planner/export.js';
 import { generatePlanning } from '../../src/planner/greedy.js';
 import { DEFAULT_TEMPLATES, inferDayType } from '../../src/planner/templates.js';
 import {
@@ -10,7 +12,9 @@ import {
   type PlannerInput,
   type PlannerOutput,
 } from '../../src/planner/types.js';
-import type { Region } from '../../src/types/index.js';
+import { runKbChecks } from '../../src/rules/kb-2005-08-10.js';
+import type { Region, Violation } from '../../src/types/index.js';
+import { downloadWorkbook } from './download.js';
 
 interface DayInput {
   date: Date;
@@ -60,13 +64,13 @@ export function GenerateView(props: {
 
   const [drivers, setDrivers] = useState<string>('');
   const [days, setDays] = useState<DayInput[]>(() => buildInitialDays(weekStart));
-  const [result, setResult] = useState<PlannerOutput | null>(null);
+  const [output, setOutput] = useState<{ result: PlannerOutput; drivers: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Reset days wanneer weekStart wijzigt
   useEffect(() => {
     setDays(buildInitialDays(weekStart));
-    setResult(null);
+    setOutput(null);
   }, [weekStart]);
 
   const catalogue = useMemo(() => {
@@ -112,7 +116,7 @@ export function GenerateView(props: {
     }));
 
     const input: PlannerInput = { weekStart, region, drivers: driverList, dayPlans };
-    setResult(generatePlanning(input, catalogue));
+    setOutput({ result: generatePlanning(input, catalogue), drivers: driverList });
   }
 
   if (!workbook) {
@@ -188,13 +192,48 @@ export function GenerateView(props: {
         </div>
       </section>
 
-      {result && <ResultPanel result={result} />}
+      {output && catalogue && (
+        <ResultPanel
+          result={output.result}
+          drivers={output.drivers}
+          catalogue={catalogue}
+          weekStart={weekStart}
+          region={region}
+        />
+      )}
     </>
   );
 }
 
-function ResultPanel(props: { result: PlannerOutput }): React.ReactElement {
-  const { result } = props;
+function ResultPanel(props: {
+  result: PlannerOutput;
+  drivers: readonly string[];
+  catalogue: ReadonlyMap<string, LoondienstDef>;
+  weekStart: Date;
+  region: Region;
+}): React.ReactElement {
+  const { result, drivers: driverList, catalogue, weekStart, region } = props;
+
+  const validation = useMemo<{ violations: Violation[] }>(() => {
+    const planning = buildPlanningFromAssignments(
+      result.assignments,
+      catalogue,
+      weekStart,
+      region,
+    );
+    return { violations: runKbChecks(planning) };
+  }, [result.assignments, catalogue, weekStart, region]);
+
+  function onDownload() {
+    const wb = exportToWorkbook({
+      assignments: result.assignments,
+      unassigned: result.unassignedDiensten,
+      drivers: driverList,
+      weekStart,
+    });
+    const isoWeek = weekStart.toISOString().slice(0, 10);
+    downloadWorkbook(wb, `planning-${isoWeek}.xlsx`);
+  }
 
   // assignments by (driver, dateISO) → dienstcode
   const cellMap = useMemo(() => {
@@ -205,12 +244,6 @@ function ResultPanel(props: { result: PlannerOutput }): React.ReactElement {
     return m;
   }, [result.assignments]);
 
-  // Unique drivers in assignments, plus zero-workload drivers from map
-  const drivers = useMemo(() => {
-    const set = new Set<string>(result.workloadMinutesPerDriver.keys());
-    return [...set].sort();
-  }, [result.workloadMinutesPerDriver]);
-
   const days = useMemo(() => {
     const set = new Set<string>();
     for (const a of result.assignments) set.add(a.date.toISOString().slice(0, 10));
@@ -218,8 +251,61 @@ function ResultPanel(props: { result: PlannerOutput }): React.ReactElement {
     return [...set].sort();
   }, [result.assignments, result.unassignedDiensten]);
 
+  const { violations } = validation;
+  const errors = violations.filter((v) => v.severity === 'error').length;
+  const warnings = violations.filter((v) => v.severity === 'warning').length;
+
   return (
     <>
+      <section className="panel">
+        <div className="generate-bar">
+          <button onClick={onDownload}>Download als Excel</button>
+          <span className="muted small">
+            planning-{weekStart.toISOString().slice(0, 10)}.xlsx — bevat sheet "praktijk" + evt.
+            "niet-toegewezen"
+          </span>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>
+          Validatie (regelmotor over gegenereerde planning) —{' '}
+          <span className="badge error">{errors} error</span>{' '}
+          <span className="badge warning">{warnings} warning</span>
+        </h2>
+        {violations.length === 0 ? (
+          <div className="empty-state">
+            <span className="badge ok">geen overtredingen</span>
+            <p className="muted" style={{ marginTop: 12 }}>
+              De gegenereerde planning respecteert KB 10/08/2005 (amplitude, dag/week-werktijd).
+            </p>
+          </div>
+        ) : (
+          <table className="violations-table">
+            <thead>
+              <tr>
+                <th>Severity</th>
+                <th>Chauffeur</th>
+                <th>Regel</th>
+                <th>Bericht</th>
+              </tr>
+            </thead>
+            <tbody>
+              {violations.map((v, i) => (
+                <tr key={i}>
+                  <td>
+                    <span className={`badge ${v.severity}`}>{v.severity}</span>
+                  </td>
+                  <td>{v.driverId}</td>
+                  <td className="muted">{v.ruleId}</td>
+                  <td>{v.message}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
       <section className="panel">
         <h2>Werkbalans per chauffeur</h2>
         <table className="violations-table">
@@ -231,7 +317,7 @@ function ResultPanel(props: { result: PlannerOutput }): React.ReactElement {
             </tr>
           </thead>
           <tbody>
-            {drivers
+            {driverList
               .map((d) => ({
                 name: d,
                 minutes: result.workloadMinutesPerDriver.get(d) ?? 0,
@@ -264,7 +350,7 @@ function ResultPanel(props: { result: PlannerOutput }): React.ReactElement {
               </tr>
             </thead>
             <tbody>
-              {drivers.map((driver) => (
+              {driverList.map((driver) => (
                 <tr key={driver}>
                   <td className="grid-driver-col">{driver}</td>
                   {days.map((d) => {
